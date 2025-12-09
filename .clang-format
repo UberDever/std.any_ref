@@ -1,0 +1,3 @@
+BasedOnStyle: LLVM  # Or any other base style
+AllowShortIfStatementsOnASingleLine: Always
+AllowShortBlocksOnASingleLine: Always

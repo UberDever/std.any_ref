@@ -1,0 +1,1 @@
+my attempt at go-flavored `any` without GC
