@@ -1,6 +1,15 @@
-/// NOB_BUILD_LINUX: cc -std=c99 -I.. -o nob nob.c internal/headeronly/nob.c
+// clang-format off
+/// NOB_BUILD_LINUX: cc -std=c99 -I.. -o nob nob.c internal/headeronly/nob.c internal/headeronly/flag.c
+// clang-format on
 
 #include "std.any_ref/third_party/nob.h/nob.h"
+#include "std.any_ref/third_party/flag.h/flag.h"
+
+#ifdef _WIN32
+#define FS_SEP "\\"
+#else
+#define FS_SEP "/"
+#endif
 
 static Nob_String_View nob_current_build_key(void) {
 #if defined(_WIN32)
@@ -42,7 +51,8 @@ static void nob_collect_c_sources_from_command(const char *command,
   }
 }
 
-static void nob_rebuild_from_directives(int argc, char **argv) {
+static void nob_rebuild_from_directives(int argc, char **argv,
+                                        const char *source_path) {
   const char *binary_path = nob_shift(argv, argc);
 #ifdef _WIN32
   if (!nob_sv_end_with(nob_sv_from_cstr(binary_path), ".exe")) {
@@ -51,11 +61,11 @@ static void nob_rebuild_from_directives(int argc, char **argv) {
 #endif
 
   Nob_File_Paths inputs = {0};
-  nob_da_append(&inputs, __FILE__);
+  nob_da_append(&inputs, source_path);
 
   Nob_String_Builder source = {0};
-  if (!nob_read_entire_file(__FILE__, &source)) {
-    nob_log(NOB_ERROR, "failed to read %s", __FILE__);
+  if (!nob_read_entire_file(source_path, &source)) {
+    nob_log(NOB_ERROR, "failed to read %s", source_path);
     exit(1);
   }
 
@@ -68,7 +78,8 @@ static void nob_rebuild_from_directives(int argc, char **argv) {
   while (cursor.count > 0) {
     Nob_String_View raw_line = nob_sv_chop_by_delim(&cursor, '\n');
     Nob_String_View line = nob_sv_trim(raw_line);
-    if (!nob_sv_starts_with(line, prefix)) { break; }
+    if (nob_sv_starts_with(line, nob_sv_from_cstr("#include"))) { break; }
+    if (!nob_sv_starts_with(line, prefix)) { continue; }
 
     Nob_String_View rest = line;
     nob_sv_chop_left(&rest, 3); // drop leading slashes
@@ -90,7 +101,7 @@ static void nob_rebuild_from_directives(int argc, char **argv) {
 
   if (command == NULL) {
     nob_log(NOB_ERROR, "no build directive for platform (%.*s) found in %s",
-            (int)platform_key.count, platform_key.data, __FILE__);
+            (int)platform_key.count, platform_key.data, source_path);
     exit(1);
   }
 
@@ -134,12 +145,8 @@ static void nob_rebuild_from_directives(int argc, char **argv) {
 #define CFLAGS                                                                 \
   "-std=c99", "-fsanitize=address", "-O0", "-Wall", "-Wextra", "-Werror"
 
-// TODO: this must be properly integrated withing gob build framework
-int main(int argc, char **argv) {
-  nob_rebuild_from_directives(argc, argv);
-
-  nob_mkdir_if_not_exists("build");
-
+static int command_build(const char *target) {
+  // TODO: here we use target
   Nob_Cmd cmd = {0};
   nob_cmd_append(&cmd, CC);
   nob_cmd_append(&cmd, CFLAGS);
@@ -152,8 +159,70 @@ int main(int argc, char **argv) {
   nob_cmd_append(&cmd, "public/std.any_ref/any_ref_test.c", "-o",
                  "build/any_ref_test");
   if (!nob_cmd_run(&cmd)) { return 1; }
+  return 0;
+}
+
+static int command_test() {
+  Nob_Cmd cmd = {0};
   nob_cmd_append(&cmd, "build/any_ref_test");
   if (!nob_cmd_run(&cmd)) { return 1; }
+  return 0;
+}
+
+static void usage(const char *program, FILE *stream) {
+  fprintf(stream, "Usage: ./%s [OPTIONS] [--] [ARGS]\n", program);
+  fprintf(stream, "OPTIONS:\n");
+  flag_print_options(stream);
+}
+
+// TODO: this must be properly integrated withing gob build framework
+int main(int argc, char **argv) {
+  nob_rebuild_from_directives(argc, argv, __FILE__);
+
+  const char *program = nob_shift(argv, argc);
+  if (argc == 0) {
+    nob_log(NOB_ERROR, "no command specified");
+    return 1;
+  }
+
+  const char *command = nob_shift(argv, argc);
+
+  char *const *flag_target = NULL;
+
+  if (argc > 0) {
+    flag_target =
+        flag_str("target", NULL, "The target we need to execute command for");
+
+    if (!flag_parse(argc, argv)) {
+      usage(program, stderr);
+      flag_print_error(stderr);
+      exit(1);
+    }
+  }
+
+  // TODO: this should be done within gob build framework
+  // should also add help registry and flag separation for different commands
+  // parse flags separately for each command???
+  if (0 == strcmp(command, "build")) {
+    nob_mkdir_if_not_exists("build");
+    const char *target = (flag_target != NULL) ? *flag_target : "all";
+    if (command_build(target) != 0) { return 1; }
+
+  } else if (0 == strcmp(command, "test")) {
+    nob_mkdir_if_not_exists("build");
+    const char *target = (flag_target != NULL) ? *flag_target : "tests";
+    if (command_build(target) != 0) { return 1; }
+    if (command_test() != 0) { return 1; }
+
+  } else if (0 == strcmp(command, "clean")) {
+    // TODO: implement proper clean command
+    NOB_TODO("implement clean command");
+  }
+
+  else {
+    nob_log(NOB_ERROR, "unknown command: %s", command);
+    return 1;
+  }
 
   return 0;
 }
