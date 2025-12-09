@@ -1,7 +1,7 @@
 #ifndef __VECTOR3_H__
 #define __VECTOR3_H__
 
-#include "lib/std.any_ref/api.h"
+#include "std.any_ref/public/std.any_ref/api.h"
 
 typedef struct vector3_t {
   float x, y, z;

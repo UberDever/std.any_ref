@@ -1,7 +1,6 @@
 #include "api.h"
 
-#include "lib/std.any_ref/api.h"
-#include "third_party/nob.h/nob.h"
+#include "std.any_ref/third_party/nob.h/nob.h"
 #include <stdbool.h>
 #include <stddef.h>
 

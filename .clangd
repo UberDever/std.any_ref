@@ -5,8 +5,8 @@ CompileFlags:
     - -g
     - -fsanitize=address,undefined
     - -D_POSIX_C_SOURCE=200809L
-    - -I.
-    - -I/home/uber/dev/util.any_ref
+    - -I/home/uber/dev/c
+
   Compiler: cc
 Diagnostics:
   ClangTidy:

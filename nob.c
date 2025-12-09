@@ -1,6 +1,6 @@
-/// NOB_BUILD_LINUX: cc -std=c99 -I. -o nob nob.c internal/headeronly/nob.c
+/// NOB_BUILD_LINUX: cc -std=c99 -I.. -o nob nob.c internal/headeronly/nob.c
 
-#include "third_party/nob.h/nob.h"
+#include "std.any_ref/third_party/nob.h/nob.h"
 
 static Nob_String_View nob_current_build_key(void) {
 #if defined(_WIN32)
@@ -144,12 +144,12 @@ int main(int argc, char **argv) {
   nob_cmd_append(&cmd, CC);
   nob_cmd_append(&cmd, CFLAGS);
   nob_cmd_append(&cmd, "-g");
-  nob_cmd_append(&cmd, "-I.");
-  nob_cmd_append(&cmd, "-I./lib/std.any_ref");
+  nob_cmd_append(&cmd, "-I..");
+  nob_cmd_append(&cmd, "-I./public/std.any_ref");
   nob_cmd_append(&cmd, "-I./third_party/nob.h");
   nob_cmd_append(&cmd, "internal/headeronly/nob.c");
-  nob_cmd_append(&cmd, "lib/std.any_ref/any_ref.c");
-  nob_cmd_append(&cmd, "lib/std.any_ref/any_ref_test.c", "-o",
+  nob_cmd_append(&cmd, "public/std.any_ref/any_ref.c");
+  nob_cmd_append(&cmd, "public/std.any_ref/any_ref_test.c", "-o",
                  "build/any_ref_test");
   if (!nob_cmd_run(&cmd)) { return 1; }
   nob_cmd_append(&cmd, "build/any_ref_test");
